@@ -3,21 +3,21 @@ const download = require('image-downloader');
 const rawData = fs.readFileSync('card_info.json');
 const data = JSON.parse(rawData).data;
 const folder = "cards"
-// updated card_info here https://ygoprodeck.com/api-guide/
+// Archivo actualizado en https://ygoprodeck.com/api-guide/
 let index = 0;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
+console.log("La api en este momento tiene", data.length, "cartas");
 start();
 
 async function start() {
   crear_carpetas()
+  crear_nuevo_json()
   for (let key = index; key < data.length; key++) {
     const card = data[key];
-
     descarga(card);
     // La api nos obliga a un maximo de 20 llamadas por segundo
-    await wait(700);
+    await wait(650);
   }
 }
 
@@ -31,24 +31,16 @@ function crear_carpetas() {
   });
 }
 
-
 function descarga(card) {
   // Donde esta la imagen
   const url = card.card_images[0].image_url;
 
   if (typeof url != 'undefined') {
     const name = card.name.replace(/[/\\?%*:|"<>]/g, '');
-
-    let subfolder = '';
-    if (card.type.includes('onster')) subfolder = 'monsters';
-    else if (card.type.includes('oken')) subfolder = 'tokens';
-    else if (card.type.includes('pell')) subfolder = 'spells';
-    else if (card.type.includes('kill')) subfolder = 'skills';
-    else subfolder = 'traps';
-
+    let subfolder = separar_imagenes(card)
     // Encontrar el indice en donde esta el punto (.) para determinar en que indice esta la extension
-    const n = url.lastIndexOf('.');
-    const extension = url.substring(n + 1);
+    const punto = url.lastIndexOf('.');
+    const extension = url.substring(punto + 1);
 
     // Generar el nombre completo del archivo de destino
     const fileDest = `../../${folder}/${subfolder}/${name}_${card.race}_${card.type}_${
@@ -62,4 +54,24 @@ function descarga(card) {
         .catch((err) => console.log(name, url, "err"));
     }
   }
+}
+
+function separar_imagenes(card) {
+  if (card.type.includes('onster')) return 'monsters';
+  else if (card.type.includes('oken')) return 'tokens';
+  else if (card.type.includes('pell')) return 'spells';
+  else if (card.type.includes('kill')) return 'skills';
+  else return 'traps';
+}
+
+function crear_nuevo_json() {
+  for (let i = 0; i < data.length; i++) {
+    if (data[i].type === "XYZ Monster") {
+      data[i].rank = data[i].level;
+      delete data[i].level;
+    }
+  }
+  const modified_file = './modified_card_info.json';
+  fs.writeFileSync(modified_file, JSON.stringify(data))
+  console.log("Nuevo modified_card_info.json creado")
 }
